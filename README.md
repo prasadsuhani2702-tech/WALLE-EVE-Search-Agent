@@ -1,5 +1,3 @@
-# WALLE-EVE-Search-Agent
-A Python-based autonomous search agent simulation
 # WALL-E and EVE Autonomous Search Agent
 
 ## About the Project
