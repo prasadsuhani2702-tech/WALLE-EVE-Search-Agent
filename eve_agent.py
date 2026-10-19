@@ -1,98 +1,101 @@
 import streamlit as st
 import random
+import math
 import time
 
-st.set_page_config(page_title="WALLE-EVE Search Agent", page_icon="🤖")
+st.set_page_config(page_title="WALL-E & EVE", page_icon="🤖")
 
-st.title("🤖 WALLE-EVE Search Agent")
-st.write("A visual grid-based search simulation")
+st.title("🤖 WALL-E & EVE Search Agent")
+st.write("Watch WALL-E search a 10 × 10 grid for EVE!")
 
-SIZE = 10
-
-# Generate a hidden EVE position
 if "eve" not in st.session_state:
     st.session_state.eve = (
-        random.randint(0, SIZE - 1),
-        random.randint(0, SIZE - 1)
+        random.randint(0, 9),
+        random.randint(0, 9)
     )
 
-if "walle" not in st.session_state:
-    st.session_state.walle = (0, 0)
+if "wall_e" not in st.session_state:
+    st.session_state.wall_e = (0, 0)
 
-if "visited" not in st.session_state:
-    st.session_state.visited = set()
+if "step" not in st.session_state:
+    st.session_state.step = 0
 
-if "found" not in st.session_state:
-    st.session_state.found = False
+if "finished" not in st.session_state:
+    st.session_state.finished = False
 
-# Display information
-st.subheader("Search Grid")
-st.write("🤖 = WALL-E | ❓ = Unsearched cell | 🟩 = Visited cell")
-st.write("EVE is hidden somewhere in the grid!")
 
-# Search button
-if st.button("🔍 Search for EVE"):
+def draw_grid(reveal=False):
     eve_x, eve_y = st.session_state.eve
-    found = False
+    wall_x, wall_y = st.session_state.wall_e
 
-    for x in range(SIZE):
-        for y in range(SIZE):
-            st.session_state.walle = (x, y)
-            st.session_state.visited.add((x, y))
+    grid = []
 
-            if (x, y) == (eve_x, eve_y):
-                st.session_state.found = True
-                found = True
-                break
+    for y in range(10):
+        row = []
 
-        if found:
-            break
-
-    st.rerun()
-
-# Reset button
-if st.button("🔄 Reset Simulation"):
-    st.session_state.eve = (
-        random.randint(0, SIZE - 1),
-        random.randint(0, SIZE - 1)
-    )
-    st.session_state.walle = (0, 0)
-    st.session_state.visited = set()
-    st.session_state.found = False
-    st.rerun()
-
-# Draw the visual grid
-for x in range(SIZE):
-    cols = st.columns(SIZE)
-
-    for y in range(SIZE):
-        position = (x, y)
-
-        if position == st.session_state.eve:
-            if st.session_state.found:
-                symbol = "💚"
+        for x in range(10):
+            if (x, y) == (wall_x, wall_y):
+                cell = "🤖"
+            elif (x, y) == (eve_x, eve_y) and (
+                reveal or st.session_state.finished
+            ):
+                cell = "👽"
             else:
-                symbol = "❓"
+                cell = "⬜"
 
-        elif position == st.session_state.walle:
-            symbol = "🤖"
+            row.append(cell)
 
-        elif position in st.session_state.visited:
-            symbol = "🟩"
+        grid.append(row)
 
-        else:
-            symbol = "⬜"
+    st.table(grid)
 
-        cols[y].markdown(
-            f"<div style='text-align:center;"
-            f"font-size:22px;border:1px solid #aaa;"
-            f"padding:8px;'>{symbol}</div>",
-            unsafe_allow_html=True
+
+def move_wall_e():
+    wall_x, wall_y = st.session_state.wall_e
+    eve_x, eve_y = st.session_state.eve
+
+    # Move one step toward EVE
+    if wall_x < eve_x:
+        wall_x += 1
+    elif wall_x > eve_x:
+        wall_x -= 1
+    elif wall_y < eve_y:
+        wall_y += 1
+    elif wall_y > eve_y:
+        wall_y -= 1
+
+    st.session_state.wall_e = (wall_x, wall_y)
+    st.session_state.step += 1
+
+    if (wall_x, wall_y) == (eve_x, eve_y):
+        st.session_state.finished = True
+
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("▶️ Move WALL-E"):
+        if not st.session_state.finished:
+            move_wall_e()
+
+with col2:
+    if st.button("🔄 Restart Search"):
+        st.session_state.eve = (
+            random.randint(0, 9),
+            random.randint(0, 9)
         )
+        st.session_state.wall_e = (0, 0)
+        st.session_state.step = 0
+        st.session_state.finished = False
 
-# Result
-if st.session_state.found:
+st.subheader("Search Grid")
+draw_grid()
+
+st.write(f"**Steps taken:** {st.session_state.step}")
+st.write(f"**WALL-E's position:** {st.session_state.wall_e}")
+
+if st.session_state.finished:
     st.success("🎉 WALL-E found EVE!")
-    st.write(f"EVE's position: {st.session_state.eve}")
+    st.write(f"**EVE's position:** {st.session_state.eve}")
 else:
-    st.info("Click 'Search for EVE' to start the search.")
+    st.info("EVE is hidden. Click 'Move WALL-E' to continue searching.")
