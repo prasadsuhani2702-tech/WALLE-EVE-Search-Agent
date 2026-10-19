@@ -1,58 +1,98 @@
-import random, math
+import streamlit as st
+import random
+import time
+
+st.set_page_config(page_title="WALLE-EVE Search Agent", page_icon="🤖")
+
+st.title("🤖 WALLE-EVE Search Agent")
+st.write("A visual grid-based search simulation")
 
 SIZE = 10
 
-# Hidden EVE
-eve = (random.randint(0, SIZE-1), random.randint(0, SIZE-1))
-wall_e = (0, 0)
+# Generate a hidden EVE position
+if "eve" not in st.session_state:
+    st.session_state.eve = (
+        random.randint(0, SIZE - 1),
+        random.randint(0, SIZE - 1)
+    )
 
-# Initial belief
-belief = {(x, y): 1/(SIZE*SIZE)
-          for x in range(SIZE)
-          for y in range(SIZE)}
+if "walle" not in st.session_state:
+    st.session_state.walle = (0, 0)
 
-def signal(pos):
-    d = math.dist(pos, eve)
-    return max(0, math.exp(-d/3) + random.gauss(0, 0.05))
+if "visited" not in st.session_state:
+    st.session_state.visited = set()
 
-def normalize():
-    total = sum(belief.values())
-    for c in belief:
-        belief[c] /= total
+if "found" not in st.session_state:
+    st.session_state.found = False
 
-# Search loop
-for step in range(20):
+# Display information
+st.subheader("Search Grid")
+st.write("🤖 = WALL-E | ❓ = Unsearched cell | 🟩 = Visited cell")
+st.write("EVE is hidden somewhere in the grid!")
 
-    obs = signal(wall_e)
+# Search button
+if st.button("🔍 Search for EVE"):
+    eve_x, eve_y = st.session_state.eve
+    found = False
 
-    # Bayesian update
-    for cell in belief:
-        d = math.dist(wall_e, cell)
-        expected = math.exp(-d/3)
-        likelihood = math.exp(-(obs-expected)**2 / 0.02)
-        belief[cell] *= likelihood
+    for x in range(SIZE):
+        for y in range(SIZE):
+            st.session_state.walle = (x, y)
+            st.session_state.visited.add((x, y))
 
-    normalize()
+            if (x, y) == (eve_x, eve_y):
+                st.session_state.found = True
+                found = True
+                break
 
-    # Most likely location
-    target = max(belief, key=belief.get)
+        if found:
+            break
 
-    print(f"Step {step}: WALL-E={wall_e}, Target={target}")
+    st.rerun()
 
-    # Move one step toward target
-    x, y = wall_e
-    tx, ty = target
+# Reset button
+if st.button("🔄 Reset Simulation"):
+    st.session_state.eve = (
+        random.randint(0, SIZE - 1),
+        random.randint(0, SIZE - 1)
+    )
+    st.session_state.walle = (0, 0)
+    st.session_state.visited = set()
+    st.session_state.found = False
+    st.rerun()
 
-    if x < tx: x += 1
-    elif x > tx: x -= 1
-    elif y < ty: y += 1
-    elif y > ty: y -= 1
+# Draw the visual grid
+for x in range(SIZE):
+    cols = st.columns(SIZE)
 
-    wall_e = (x, y)
+    for y in range(SIZE):
+        position = (x, y)
+
+        if position == st.session_state.eve:
+            if st.session_state.found:
+                symbol = "💚"
+            else:
+                symbol = "❓"
+
+        elif position == st.session_state.walle:
+            symbol = "🤖"
+
+        elif position in st.session_state.visited:
+            symbol = "🟩"
+
+        else:
+            symbol = "⬜"
+
+        cols[y].markdown(
+            f"<div style='text-align:center;"
+            f"font-size:22px;border:1px solid #aaa;"
+            f"padding:8px;'>{symbol}</div>",
+            unsafe_allow_html=True
+        )
 
 # Result
-guess = max(belief, key=belief.get)
-
-print("\nPredicted:", guess)
-print("Actual   :", eve)
-print("Error    :", round(math.dist(guess, eve), 2))
+if st.session_state.found:
+    st.success("🎉 WALL-E found EVE!")
+    st.write(f"EVE's position: {st.session_state.eve}")
+else:
+    st.info("Click 'Search for EVE' to start the search.")
